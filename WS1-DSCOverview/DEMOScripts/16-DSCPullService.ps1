@@ -136,4 +136,4 @@ New-DscChecksum -Path C:\DemoScripts\ArchiveDemoForPull\ArchiveDemo.mof -OutPath
 #Copy the configuration MOF, checksum and module zip to Pull Server.
 
 #update the LCM client so that it downloads the configuration and modules
-Update-DscConfiguration 
+Update-DscConfiguration -ComputerName S16-01 -Wait -Verbose 
