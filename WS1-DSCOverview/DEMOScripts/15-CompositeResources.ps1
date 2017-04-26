@@ -1,5 +1,5 @@
 ﻿#Composite resource module are created out of parameterized configurations
-$configScript = '
+$configScript = @'
 Configuration ExtractResource {
     param (
         [String] $ArchivePath,
@@ -13,7 +13,7 @@ Configuration ExtractResource {
         Ensure="Present"
     }
 }
-'
+'@
 
 #Create the folder structure needed for this composite resource
 mkdir C:\DemoScripts\MyCompositeResourceModule\DSCResources\ExtractResource -Force

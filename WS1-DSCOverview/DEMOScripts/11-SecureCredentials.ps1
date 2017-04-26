@@ -5,9 +5,14 @@ $cert = New-SelfSignedCertificate -Type DocumentEncryptionCertLegacyCsp -DnsName
 # export the public key certificate
 $cert | Export-Certificate -FilePath "C:\DemoScripts\DscPublicKey.cer" -Force
 
+# add copy over pssession?
+
 #Copy the cert to this authoring station and generate the config data
 #Thumbprint is from the target node
 #Get it using Get-ChildItem Cert:\LocalMachine\My
+#Or get it through x509certificate2 class
+[System.Security.Cryptography.X509Certificates.X509Certificate2]::new('C:\DemoScripts\DscPublicKey.cer').Thumbprint
+
 $ConfigData= @{ 
     AllNodes = @(     
         @{  
@@ -47,14 +52,26 @@ Configuration UserDemo
             PasswordChangeRequired = $false
         }
 
-        LocalConfigurationManager 
-        { 
-             CertificateId = $node.Thumbprint 
-        }
+        # v1
+        # LocalConfigurationManager 
+        # { 
+        #      CertificateId = $node.Thumbprint 
+        # }
     }
 }
 
-#Compiling this configuration will fail since storing plain-text passwords in MOF is not allowed.
+# meta.mof v2
+[dsclocalconfigurationmanager()]
+configuration LCM {
+    Node $AllNodes.NodeName {
+        Settings {
+            CertificateID = $node.Thumbprint
+        }
+    }
+}
+LCM -ConfigurationData $ConfigData -OutputPath C:\DemoScripts\UserDemo
+
+#Compiling this configuration will pass
 UserDemo -OutputPath C:\DemoScripts\UserDemo -Credential (Get-Credential) -ConfigurationData $ConfigData
 
 #enact meta config first to ensure that the LCM is aware of the certificate to decrypt

@@ -14,19 +14,20 @@ Get-DscLocalConfigurationManager
 
 #LCM itself can be configured using a meta configuration document; These meta resources are exported by PSDesiredStateConfigurationEngine Module
 #The PSDesiredStateConfigurationEngine is v2; These resources won't get listed in the output of Get-DscResource 
+[Microsoft.PowerShell.DesiredStateConfiguration.Internal.DscClassCache]::LoadDefaultCimKeywords()
 [System.Management.Automation.Language.DynamicKeyword]::GetKeyword() | Where-Object { $_.ImplementingModule -eq 'PSDesiredStateConfigurationEngine' } | Select Keyword
 
 #Get the configurale properties on a meta resource
-[Microsoft.PowerShell.DesiredStateConfiguration.Internal.DscClassCache]::LoadDefaultCimKeywords()
 [System.Management.Automation.Language.DynamicKeyword]::GetKeyword('Settings') | Select -ExpandProperty Properties
 
 #The v1 meta resource for configuring LCM is LocalConfigutationManager
 [System.Management.Automation.Language.DynamicKeyword]::GetKeyword('LocalConfigurationManager')
+[System.Management.Automation.Language.DynamicKeyword]::GetKeyword('LocalConfigurationManager').Properties
 
 #LCM runs as SYSTEM account. Therefore, has access to all administrator level changes on the local system. There are certain scenarios where this is a problem and will discuss that when talking about DSC RunAs Crednetials
 #This can be verified using a DSC configuration document. Don't worry about whats in this document but pay attention to the verbose output.
 #The following is a DSC configuration document that uses script resource
-Configuration SYSTEMDemo 
+Configuration SYSTEMDemo
 {
     Script Demo
     {
@@ -46,3 +47,22 @@ Configuration SYSTEMDemo
 
 SYSTEMDemo -outputPath C:\DemoScripts\SystemDemo
 Start-DscConfiguration -Path C:\DemoScripts\SystemDemo -Verbose -Wait
+
+# if you don't want to apply, you can make use of Invoke-DscResource to test stuff out
+Invoke-DscResource -ModuleName PSDesiredStateConfiguration -Name Script -Method Test -Verbose -Property @{
+    GetScript = {
+        return @{
+            GetScript = $GetScript
+            SetScript = $SetScript
+            TestScript = $TestScript
+            Result = whoami.exe
+        }
+    }
+    SetScript = {
+        $null
+    }
+    TestScript = {
+        Write-Verbose -Message "This configuration is running as: $(whoami)"
+        return $true
+    }
+}

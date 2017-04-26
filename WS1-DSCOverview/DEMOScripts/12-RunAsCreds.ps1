@@ -21,7 +21,7 @@ Configuration GroupDemo
     }
 }
 
-GroupDemo -OutputPath C:\DemoScripts\GroupDemo -MemberToAdd 's2dlab\administrator'
+GroupDemo -OutputPath C:\DemoScripts\GroupDemo -MemberToAdd 'cloud\administrator'
 
 #This enact will fail since LCM runs as SYSTEM and cannot access AD server to query for the domain account
 Start-DscConfiguration -Path C:\DemoScripts\GroupDemo -Verbose -Wait -Force
@@ -87,8 +87,7 @@ Configuration GroupDemo
 {
     param
     (
-        [String] $MemberToAdd,
-        [pscredential] $RunasCred
+        [String] $MemberToAdd
     )
     Import-DscResource -moduleName PSDesiredStateConfiguration
     
@@ -107,5 +106,5 @@ Configuration GroupDemo
 #We pass the domain credentials to access the AD server as PsDscRunAsCredential
 GroupDemo -OutputPath C:\DemoScripts\GroupDemo -MemberToAdd 'cloud\administrator' -ConfigurationData $ConfigData
 
-#This enact will fail since LCM runs as SYSTEM and cannot access AD server to query for the domain account
+#This enact will pass since LCM runs as cloud\administrator
 Start-DscConfiguration -Path C:\DemoScripts\GroupDemo -Verbose -Wait -Force

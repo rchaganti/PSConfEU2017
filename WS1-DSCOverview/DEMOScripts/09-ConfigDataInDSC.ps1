@@ -38,7 +38,9 @@ $ConfigData =
         }
     )
 
-    NonNodeData = ""   
+    NonNodeData = @{
+
+    }
 }
 
 #Let us convert our configuration to use configurationdata
