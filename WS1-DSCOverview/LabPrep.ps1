@@ -6,11 +6,10 @@ $switchName = 'nat'
 $GateWay = '172.22.176.1'
 $DCVMName = 'S16-DC'
 $Password = 'Welkom01'
-$DCCIDR = '172.22.176.200/20'
-$Member2016Name = 'S16-0'
-$Member2012Name = 'S12R2-0'
-$Member2012CIDR = '172.22.176.20{0}/20'
-$Member2016CIDR = '172.22.176.20{0}/20'
+$CIDR = '172.22.176.20{0}/20'
+$DCCIDR = $CIDR -f '0'
+$Member2016Name = 'S16-01'
+$Member2012Name = 'S12R2-01'
 
 #region unattend.xml
 function New-UnAttendXML {
@@ -144,6 +143,47 @@ configuration PDC {
             DomainNetbiosName = 'cloud'
             DependsOn = '[WindowsFeature]ADDSInstall'
         }
+        Script RemoveDSCImplementation {
+            GetScript = {
+                return @{
+                    TestScript = `$TestScript
+                    GetScript = `$GetScript
+                    SetScript = `$SetScript
+                }
+            }
+            SetScript = {
+                `$scriptblock = {
+                    Start-Sleep -Seconds 30
+                    Get-PSHostProcessInfo | 
+                        Where-Object -FilterScript { `$_.AppDomainName -eq 'DscPsPluginWkr_AppDomain'} | 
+                            Foreach-Object -Process { `$_.ProcessId | Stop-Process -Force}
+                    Clear-Content -Path `"`$env:windir\system32\Configuration\DSCEngineCache.mof`"
+                    Clear-Content -Path `"`$env:windir\system32\Configuration\DSCStatusHistory.mof`"
+                    Remove-Item -Path `"`$env:windir\System32\Configuration\ConfigurationStatus\*`" -Force
+                    Remove-Item -Path `"`$env:windir\System32\Configuration\*.mof`" -Force
+                    Remove-Item -Path `"`$env:windir\System32\Configuration\*.mof.checksum`" -Force
+                    @(
+                        'Microsoft-Windows-DSC/Admin',
+                        'Microsoft-Windows-DSC/Operational'
+                    ) | ForEach-Object -Process {
+                        [System.Diagnostics.Eventing.Reader.EventLogSession]::GlobalSession.ClearLog(`$_)
+                    }
+                    Get-DscResource | Where-Object -FilterScript {
+                        `$_.ModuleName -ne 'PSDesiredStateConfiguration' -and `$_.ModuleName -ne `$null -and `$_.ModuleName -ne 'PackageManagement'
+                    } | Select-Object -ExpandProperty ModuleName -Unique | ForEach-Object -Process {
+                        Get-Module -Name `$_ -ListAvailable | ForEach-Object -Process {
+                            Remove-Item -Path (Split-Path `$_.ModuleBase) -Recurse -Force
+                        }
+                    }
+                    Restart-Computer -Force
+                }
+                start-process `$pshome\powershell.exe -ArgumentList `"-Command ```"&{`$(`$scriptblock.ToString())}```"`"
+            }
+            TestScript = {
+                `$false
+            }
+            DependsOn = '[xADDomain]FirstDC'
+        }
     }
 }
 
@@ -210,6 +250,47 @@ configuration Member {
             Credential = `$Credential
             DependsOn = '[xWaitForADDomain]DscForestWait'
         }
+        Script RemoveDSCImplementation {
+            GetScript = {
+                return @{
+                    TestScript = `$TestScript
+                    GetScript = `$GetScript
+                    SetScript = `$SetScript
+                }
+            }
+            SetScript = {
+                `$scriptblock = {
+                    Start-Sleep -Seconds 30
+                    Get-PSHostProcessInfo | 
+                        Where-Object -FilterScript { `$_.AppDomainName -eq 'DscPsPluginWkr_AppDomain'} | 
+                            Foreach-Object -Process { `$_.ProcessId | Stop-Process -Force}
+                    Clear-Content -Path `"`$env:windir\system32\Configuration\DSCEngineCache.mof`"
+                    Clear-Content -Path `"`$env:windir\system32\Configuration\DSCStatusHistory.mof`"
+                    Remove-Item -Path `"`$env:windir\System32\Configuration\ConfigurationStatus\*`" -Force
+                    Remove-Item -Path `"`$env:windir\System32\Configuration\*.mof`" -Force
+                    Remove-Item -Path `"`$env:windir\System32\Configuration\*.mof.checksum`" -Force
+                    @(
+                        'Microsoft-Windows-DSC/Admin',
+                        'Microsoft-Windows-DSC/Operational'
+                    ) | ForEach-Object -Process {
+                        [System.Diagnostics.Eventing.Reader.EventLogSession]::GlobalSession.ClearLog(`$_)
+                    }
+                    Get-DscResource | Where-Object -FilterScript {
+                        `$_.ModuleName -ne 'PSDesiredStateConfiguration' -and `$_.ModuleName -ne `$null -and `$_.ModuleName -ne 'PackageManagement'
+                    } | Select-Object -ExpandProperty ModuleName -Unique | ForEach-Object -Process {
+                        Get-Module -Name `$_ -ListAvailable | ForEach-Object -Process {
+                            Remove-Item -Path (Split-Path `$_.ModuleBase) -Recurse -Force
+                        }
+                    }
+                    Restart-Computer -Force
+                }
+                start-process `$pshome\powershell.exe -ArgumentList `"-Command ```"&{`$(`$scriptblock.ToString())}```"`"
+            }
+            TestScript = {
+                `$false
+            }
+            DependsOn = '[xComputer]Rename'
+        }
     }
 }
 
@@ -247,7 +328,11 @@ function New-DemoVM {
     #TODO: Copy demo files
     $Mount | Dismount-VHD
     $VM = New-VM -Name $ComputerName -SwitchName $switchName -Generation 2 -VHDPath $DiffPath -BootDevice VHD
-    $VM | Set-VMMemory -DynamicMemoryEnabled $false -StartupBytes $Memory
+    if (-not $Member) {
+        $VM | Set-VMMemory -DynamicMemoryEnabled $false -StartupBytes $Memory
+    } else {
+        $VM | Set-VMMemory -DynamicMemoryEnabled $true -StartupBytes $Memory -MinimumBytes 768MB
+    }
     $VM | Set-VMProcessor -Count $CPU
     $VM | Enable-VMIntegrationService -Name 'Guest Service Interface'
     $VM | Start-VM
@@ -256,12 +341,8 @@ function New-DemoVM {
 
 #region create VMs
 New-DemoVM -ParentVhd $2016 -ComputerName $DCVMName -CIDR $DCCIDR -Memory 3GB -CPU 2 -DNSServer '8.8.8.8'
-1..2 | % {
-    New-DemoVM -ParentVhd $2016Core -ComputerName $Member2016Name$_ -CIDR ($Member2016CIDR -f $_) -Memory 2GB -CPU 2 -DNSServer $DCCIDR.Split('/')[0] -Member
-}
-1..2 | % {
-    New-DemoVM -ParentVhd $2012Core -ComputerName $Member2012Name$_ -CIDR ($Member2012CIDR -f ($_ + 2)) -Memory 2GB -CPU 2 -DNSServer $DCCIDR.Split('/')[0] -Member
-}
+New-DemoVM -ParentVhd $2016Core -ComputerName $Member2016Name -CIDR ($CIDR -f '1') -Memory 2GB -CPU 2 -DNSServer $DCCIDR.Split('/')[0] -Member
+New-DemoVM -ParentVhd $2012Core -ComputerName $Member2012Name -CIDR ($CIDR -f '2') -Memory 2GB -CPU 2 -DNSServer $DCCIDR.Split('/')[0] -Member
 #endregion
 
 
