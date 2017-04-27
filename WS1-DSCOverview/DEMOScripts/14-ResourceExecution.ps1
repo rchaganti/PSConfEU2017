@@ -1,6 +1,6 @@
-﻿#DSC resource module execution follows a standard process
-#This can be seen in the Verbose output during configuration enact process using Start-DscConfiguration
-#Another way to visualize that is using the script resource
+﻿# DSC resource module execution follows a standard process
+# This can be seen in the Verbose output during configuration enact process using Start-DscConfiguration
+# Another way to visualize that is using the script resource
 Configuration ResourceDemo 
 {
     Script Demo
@@ -23,7 +23,7 @@ Configuration ResourceDemo
 ResourceDemo -outputPath C:\DemoScripts\ResourceDemo
 Start-DscConfiguration -Path C:\DemoScripts\ResourceDemo -Verbose -Wait
 
-#We can see the Set skipped when Test returns True
+# We can see the Set skipped when Test returns True
 Configuration ResourceDemo 
 {
     Script Demo

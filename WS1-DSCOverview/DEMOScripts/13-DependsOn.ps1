@@ -1,4 +1,6 @@
-﻿#The DependsOn automatic parameter in the resource configuration can be used to create dependencies and ensure the prerequisite configuration is complete
+﻿# The DependsOn automatic parameter in the resource configuration can be used to create dependencies and ensure the prerequisite configuration is complete
+$Thumbprint = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new('C:\DemoScripts\DscPublicKey.cer').Thumbprint
+
 $ConfigData= @{ 
     AllNodes = @(     
         @{  
@@ -12,13 +14,13 @@ $ConfigData= @{
 
             # The thumbprint of the Encryption Certificate 
             # used to decrypt the credentials on target node 
-            Thumbprint = "20BAC25353DE4C94C39006F85E0B25BC19D26AFF" 
-        }; 
+            Thumbprint = $Thumbprint
+        }
     )    
 }
 
-#DependsOn is not required if the resource instances are in a proper sequence. However, DependsOn is neededif you want a dependent resource configuration proceed only if the prerequisite configuration is successful.
-#With DependsOn specified, the sequence of resource instance configuration definitions in the document does not matetr.
+# DependsOn is not required if the resource instances are in a proper sequence. However, DependsOn is neededif you want a dependent resource configuration proceed only if the prerequisite configuration is successful.
+# With DependsOn specified, the sequence of resource instance configuration definitions in the document does not matetr.
 Configuration DependsDemo
 {
     param (
@@ -48,8 +50,9 @@ Configuration DependsDemo
     }
 }
 
-#Compile Configuration
+# Compile Configuration
 DependsDemo -OutputPath C:\DemoScripts\DependsDemo -ConfigurationData $ConfigData -Credential (Get-Credential)
+psedit C:\demoscripts\DependsDemo\S16-01.mof
 
-#Enact Configuration
+# Enact Configuration
 Start-DscConfiguration -Path C:\DemoScripts\DependsDemo -ComputerName S16-01 -Verbose -Wait
