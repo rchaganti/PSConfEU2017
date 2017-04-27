@@ -1,4 +1,4 @@
-﻿#If you observe the configuration command types, one of the available parameters is -ConfigurationData
+﻿# If you observe the configuration command types, one of the available parameters is -ConfigurationData
 Configuration ArchiveDemo {
     param (
         [String[]] $NodeNames = 'localhost',
@@ -18,8 +18,8 @@ Configuration ArchiveDemo {
 
 Get-Command -Name ArchiveDemo | Select -ExpandProperty Parameters
 
-#Configuration Data in DSC can be used to separate structural configuration from environmental configuration
-#Here is a sample structure
+# Configuration Data in DSC can be used to separate structural configuration from environmental configuration
+# Here is a sample structure
 $ConfigData = 
 @{
     AllNodes = 
@@ -43,8 +43,8 @@ $ConfigData =
     }
 }
 
-#Let us convert our configuration to use configurationdata
-#When nodename is *, all properties and arguments within that hash will be available to all 
+# Let us convert our configuration to use configurationdata
+# When nodename is *, all properties and arguments within that hash will be available to all 
 $ConfigData = 
 @{
     AllNodes = 
@@ -64,7 +64,7 @@ $ConfigData =
     ) 
 }
 
-#Observe how the configuration changes
+# Observe how the configuration changes
 Configuration ArchiveDemo {
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration'
     Node $AllNodes.NodeName {
@@ -76,14 +76,14 @@ Configuration ArchiveDemo {
     }
 }
 
-#Use -ConfigurationData to pass the Configuration Data 
+# Use -ConfigurationData to pass the Configuration Data 
 ArchiveDemo -OutputPath C:\Demoscripts\Archivedemo -ConfigurationData $ConfigData
 
-#Enact configuration
-Start-DscConfiguration -Path C:\Demoscripts\Archivedemo -Wait -Verbose -ComputerName S16-01,S16-02 
+# Enact configuration
+Start-DscConfiguration -Path C:\Demoscripts\Archivedemo -Wait -Verbose -ComputerName S16-01,S12R2-01
 
-#Configuration data can also be used for conditional resource instance inclusion
-#For example, in the below config, we conifgure hostsfile resource only if the role of the node is a web server
+# Configuration data can also be used for conditional resource instance inclusion
+# For example, in the below config, we conifgure hostsfile resource only if the role of the node is a web server
 $ConfigData = 
 @{
     AllNodes = 
@@ -94,7 +94,7 @@ $ConfigData =
             Role = 'Web'
         },
         @{
-            NodeName    = "S16-02"
+            NodeName    = "S12R2-01"
             ArchivePath = "C:\Demoscripts\AppScripts.zip"
             Role = 'App'
         },
@@ -105,7 +105,7 @@ $ConfigData =
     ) 
 }
 
-#Observe how the configuration changes
+# Observe how the configuration changes
 Configuration ArchiveDemo {
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration'
     Import-DscResource –ModuleName xNetworking -ModuleVersion 3.2.0.0
@@ -128,12 +128,12 @@ Configuration ArchiveDemo {
     }
 }
 
-#Use -ConfigurationData to pass the Configuration Data 
+# Use -ConfigurationData to pass the Configuration Data 
 ArchiveDemo -OutputPath C:\Demoscripts\Archivedemo -ConfigurationData $ConfigData
 
-#Open the generated MOF and verify that the HostsFile resource is added only to S16-01
+# Open the generated MOF and verify that the HostsFile resource is added only to S16-01
 psEdit C:\Demoscripts\Archivedemo\S16-01.MOF
-psEdit C:\Demoscripts\Archivedemo\S16-02.MOF
+psEdit C:\Demoscripts\Archivedemo\S12R2-01.MOF
 
-#Enact configuration
-Start-DscConfiguration -Path C:\Demoscripts\Archivedemo -Wait -Verbose -ComputerName S16-01,S16-02 
+# Enact configuration
+Start-DscConfiguration -Path C:\Demoscripts\Archivedemo -Wait -Verbose -ComputerName S16-01,S12R2-01

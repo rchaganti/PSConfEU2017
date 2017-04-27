@@ -1,6 +1,6 @@
-﻿#Example meta configuration document - v2
-#Understand the structure
-#Understand how to use intellisense
+﻿# Example meta configuration document - v2
+# Understand the structure
+# Understand how to use intellisense
 [DSCLocalConfigurationManager()]
 configuration LCMConfig
 {
@@ -13,8 +13,8 @@ configuration LCMConfig
     }
 }
 
-#Running the meta configuration compiles it into a MOF
+# Running the meta configuration compiles it into a MOF
 LCMConfig
 
-#Set-DscLocalConfigurationManager configures the LCM from the compiled MOF
+# Set-DscLocalConfigurationManager configures the LCM from the compiled MOF
 Set-DscLocalConfigurationManager -Path .\LCMConfig
