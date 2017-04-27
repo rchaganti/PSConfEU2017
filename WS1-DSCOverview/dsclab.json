@@ -2,12 +2,6 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "storageAccountName": {
-            "type": "string",
-            "metadata": {
-                "description": "Unique name for the storage account."
-            }
-        },
         "assetLocation": {
             "type": "string",
             "defaultValue": "https://raw.githubusercontent.com/rchaganti/armseries/master",
@@ -37,12 +31,13 @@
         }
     },
     "variables": {
-        "vNetPrefix": "10.0.0.0/16",
+        "vNetPrefix": "172.22.176.0/20",
         "vNetName" : "dsclabnet",
         "vNetSubnetName": "subnet",
-        "vNetSubnetPrefix": "10.0.0.0/24",
+        "vnetSubnetPrefix": "172.22.176.",
+        "vNetSubnetCIDR": "172.22.176.0/20",
         "vNetSubnetID": "[concat(resourceId('Microsoft.Network/virtualNetworks',variables('vNetName')),'/subnets/',variables('vNetSubnetName'))]",
-        "dnsServerPrivateIp": "10.0.0.8",
+        "dnsServerPrivateIp": "172.22.176.200",
         "vmNameArray" : [
             "S16-DC",
             "S16-01",
@@ -60,21 +55,36 @@
     },
     "resources": [
         {
-            "name": "[parameters('storageAccountName')]",
-            "type": "Microsoft.Storage/storageAccounts",
-            "sku": {
-                "name": "Standard_LRS",
-                "tier": "Standard"
-            },
-            "kind": "Storage",            
-            "apiVersion": "2016-01-01",
-            "location": "[resourceGroup().location]"
+            "name": "dsclabnsg",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2016-09-01",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "default-allow-rdp",
+                        "properties": {
+                            "priority": 1000,
+                            "sourceAddressPrefix": "*",
+                            "protocol": "Tcp",
+                            "destinationPortRange": "3389",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*"
+                        }
+                    }
+                ]
+            }
         },
         {
             "name": "[variables('vNetName')]",
             "type": "Microsoft.Network/virtualNetworks",
             "location": "[ResourceGroup().Location]",
             "apiVersion": "2015-05-01-preview",
+            "dependsOn": [
+                "[concat('Microsoft.Network/networkSecurityGroups/', 'dsclabnsg')]"
+            ],
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
@@ -85,54 +95,10 @@
                     {
                         "name": "[variables('vNetSubnetName')]",
                         "properties": {
-                            "addressPrefix": "[variables('vNetSubnetPrefix')]"
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts",
-            "name": "dsclabAA",
-            "apiVersion": "2015-10-31",
-            "location": "[ResourceGroup().Location]",
-            "properties": {
-                "sku": {
-                    "name": "Free"
-                }
-            }
-        },
-        {
-            "name": "dsclabnsg",
-            "type": "Microsoft.Network/networkSecurityGroups",
-            "apiVersion": "2016-09-01",
-            "location": "[resourceGroup().location]",
-            "properties": {
-                "securityRules": [
-                    {
-                        "name": "WinRM-HTTPS",
-                        "properties": {
-                            "priority": 100,
-                            "sourceAddressPrefix": "*",
-                            "protocol": "TCP",
-                            "destinationPortRange": "5986",
-                            "access": "Allow",
-                            "direction": "Inbound",
-                            "sourcePortRange": "*",
-                            "destinationAddressPrefix": "*"
-                        }
-                    },
-                    {
-                        "name": "default-allow-rdp",
-                        "properties": {
-                            "priority": 1000,
-                            "sourceAddressPrefix": "*",
-                            "protocol": "TCP",
-                            "destinationPortRange": "3389",
-                            "access": "Allow",
-                            "direction": "Inbound",
-                            "sourcePortRange": "*",
-                            "destinationAddressPrefix": "*"
+                            "addressPrefix": "[variables('vNetSubnetCIDR')]",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId(resourceGroup().name, 'Microsoft.Network/networkSecurityGroups', 'dsclabnsg')]"
+                            }
                         }
                     }
                 ]
@@ -146,7 +112,7 @@
             "properties": {
                 "publicIpAllocationMethod": "Dynamic"
             }
-        },        
+        },
         {
             "apiVersion": "2015-05-01-preview",
             "type": "Microsoft.Network/networkInterfaces",
@@ -154,8 +120,7 @@
             "location": "[resourceGroup().location]",
             "dependsOn": [
                 "[concat('Microsoft.Network/virtualNetworks/', variables('vNetName'))]",
-                "[concat('Microsoft.Network/publicIpAddresses/', 'S16-DC-PIP')]",
-                "[concat('Microsoft.Network/networkSecurityGroups/', 'dsclabnsg')]"                
+                "[concat('Microsoft.Network/publicIpAddresses/', 'S16-DC-PIP')]"
             ],
             "properties": {
                 "ipConfigurations": [
@@ -172,12 +137,9 @@
                             }
                         }
                     }
-                ],
-                "networkSecurityGroup": {
-                    "id": "[resourceId(resourceGroup().name, 'Microsoft.Network/networkSecurityGroups', 'dsclabnsg')]"
-                }
+                ]
             }
-        },        
+        },
         {
             "apiVersion": "2015-05-01-preview",
             "type": "Microsoft.Network/networkInterfaces",
@@ -195,7 +157,8 @@
                     {
                         "name": "[concat(variables('vmNameArray')[copyIndex(1)], '-ipconfig')]",
                         "properties": {
-                            "privateIPAllocationMethod": "Dynamic",
+                            "privateIPAllocationMethod": "Static",
+                            "privateIPAddress": "[concat(variables('vNetSubnetPrefix'), add(200, copyIndex(1)))]",
                             "subnet": {
                                 "id": "[variables('vNetSubnetID')]"
                             }
@@ -214,8 +177,7 @@
                 "count": "[length(variables('vmNameArray'))]"
             },
             "dependsOn": [
-                "[concat('Microsoft.Network/networkInterfaces/', concat(variables('vmNameArray')[copyIndex()],'-nif'))]",
-                "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]"
+                "[concat('Microsoft.Network/networkInterfaces/', concat(variables('vmNameArray')[copyIndex()],'-nif'))]"
             ],
             "properties": {
                 "osProfile": {
@@ -238,10 +200,11 @@
                     },
                     "osDisk": {
                         "name": "[variables('vmNameArray')[copyIndex()]]",
-                        "createOption": "fromImage",
-                        "vhd": {
-                            "uri": "[concat(concat(reference(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2015-06-15').primaryEndpoints['blob'], 'vhds/'), variables('vmNameArray')[copyIndex()], '20170427193742.vhd')]"
-                        }
+                        "createOption": "FromImage",
+                        "managedDisk":{
+                            "storageAccountType":"Standard_LRS"
+                        },
+                        "caching": "ReadWrite"
                     },
                     "dataDisks": []
                 },
@@ -308,7 +271,7 @@
                         "value": "[variables('vNetSubnetName')]"
                     },
                     "subnetRange": {
-                        "value": "[variables('vNetSubnetPrefix')]"
+                        "value": "[variables('vNetSubnetCIDR')]"
                     },
                     "DNSServerAddress": {
                         "value": [
