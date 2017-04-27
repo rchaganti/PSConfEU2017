@@ -125,6 +125,26 @@ configuration PDC {
     Import-DscResource -ModuleName xActiveDirectory
 
     Node localhost {
+        Script DisableFirewall {
+            GetScript = {
+                @{
+                    GetScript = `$GetScript
+                    SetScript = `$SetScript
+                    TestScript = `$TestScript
+                    Result = -not('True' -in (Get-NetFirewallProfile -All).Enabled)
+                }
+            }
+
+            SetScript = {
+                Set-NetFirewallProfile -All -Enabled False -Verbose
+            }
+
+            TestScript = {
+                `$Status = -not('True' -in (Get-NetFirewallProfile -All).Enabled)
+                `$Status -eq `$True
+            }
+        }
+
         WindowsFeature ADDSInstall {
             Ensure = 'Present'
             Name = 'AD-Domain-Services'
@@ -230,6 +250,26 @@ configuration Member {
     Import-DscResource -ModuleName xNetworking
 
     Node localhost {
+        Script DisableFirewall {
+            GetScript = {
+                @{
+                    GetScript = `$GetScript
+                    SetScript = `$SetScript
+                    TestScript = `$TestScript
+                    Result = -not('True' -in (Get-NetFirewallProfile -All).Enabled)
+                }
+            }
+
+            SetScript = {
+                Set-NetFirewallProfile -All -Enabled False -Verbose
+            }
+
+            TestScript = {
+                `$Status = -not('True' -in (Get-NetFirewallProfile -All).Enabled)
+                `$Status -eq `$True
+            }
+        }
+
         xDNSServerAddress DCDNS {
             InterfaceAlias = 'Ethernet'
             Address = `$DNSServer
@@ -318,14 +358,15 @@ function New-DemoVM {
     $DriveLetter = ($Mount | Get-Disk | Get-Partition | Where-Object { $_.DriveLetter -and $_.size -gt 1gb}).DriveLetter
     $Unattend = New-UnAttendXML -ComputerName $ComputerName -Password $Password -CIDR $CIDR -GateWay $GateWay -DNSServer $DNSServer
     $null = New-Item -Path $DriveLetter`:\unattend.xml -Value $Unattend -ItemType File -Force
+    Copy-Item -Path $vhdPath\DSCResources.zip -Destination "$DriveLetter`:\"
     Expand-Archive -Path $vhdPath\DSCResources.zip -DestinationPath "$DriveLetter`:\Program Files\WindowsPowerShell\Modules"
+    Expand-Archive -Path $vhdPath\DemoScripts.zip -DestinationPath "$DriveLetter`:\"
     if (-not $Member) {
         New-DCScript | Out-File $DriveLetter`:\Windows\Temp\DSCConfig.ps1
     } else {
         New-MemberScript | Out-File $DriveLetter`:\Windows\Temp\DSCConfig.ps1
     }
     $null = New-Item $DriveLetter`:\Windows\Setup\Scripts\SetupComplete.cmd -Value '%SYSTEMROOT%\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -Executionpolicy bypass -NoProfile -Noninteractive -File C:\Windows\Temp\DSCConfig.ps1' -Force
-    #TODO: Copy demo files
     $Mount | Dismount-VHD
     $VM = New-VM -Name $ComputerName -SwitchName $switchName -Generation 2 -VHDPath $DiffPath -BootDevice VHD
     if (-not $Member) {
