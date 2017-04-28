@@ -32,25 +32,25 @@
     },
     "variables": {
         "vNetPrefix": "172.22.176.0/20",
-        "vNetName" : "dsclabnet",
+        "vNetName": "dsclabnet",
         "vNetSubnetName": "subnet",
         "vnetSubnetPrefix": "172.22.176.",
         "vNetSubnetCIDR": "172.22.176.0/20",
         "vNetSubnetID": "[concat(resourceId('Microsoft.Network/virtualNetworks',variables('vNetName')),'/subnets/',variables('vNetSubnetName'))]",
         "dnsServerPrivateIp": "172.22.176.200",
-        "vmNameArray" : [
+        "vmNameArray": [
             "S16-DC",
             "S16-01",
             "S12R2-01"
         ],
-        "S16-DC" : {
+        "S16-DC": {
             "sku": "2016-Datacenter"
         },
-        "S16-01" : {
-            "sku" : "2016-Datacenter"
+        "S16-01": {
+            "sku": "2016-Datacenter"
         },
-        "S12R2-01" : {
-            "sku" : "2012-R2-Datacenter"
+        "S12R2-01": {
+            "sku": "2012-R2-Datacenter"
         }
     },
     "resources": [
@@ -128,7 +128,7 @@
                         "name": "S16-DC-ipconfig",
                         "properties": {
                             "privateIPAllocationMethod": "Static",
-                            "privateIPAddress": "[variables('dnsServerPrivateIp')]",                            
+                            "privateIPAddress": "[variables('dnsServerPrivateIp')]",
                             "subnet": {
                                 "id": "[variables('vNetSubnetID')]"
                             },
@@ -189,7 +189,7 @@
                     }
                 },
                 "hardwareProfile": {
-                    "vmSize": "Standard_A2"
+                    "vmSize": "Standard_D2_v2"
                 },
                 "storageProfile": {
                     "imageReference": {
@@ -201,8 +201,8 @@
                     "osDisk": {
                         "name": "[variables('vmNameArray')[copyIndex()]]",
                         "createOption": "FromImage",
-                        "managedDisk":{
-                            "storageAccountType":"Standard_LRS"
+                        "managedDisk": {
+                            "storageAccountType": "Standard_LRS"
                         },
                         "caching": "ReadWrite"
                     },
@@ -219,11 +219,37 @@
         },
         {
             "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('vmNameArray')[copyIndex()],'/copyScripts')]",
+            "apiVersion": "2015-06-15",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "vmCopyScriptLoop",
+                "count": 3
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/',variables('vmNameArray')[copyIndex()])]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.8",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "[concat(parameters('assetLocation'), '/downloadScripts.ps1')]"
+                    ],
+                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', 'downloadScripts.ps1 -archiveURL https://github.com/rchaganti/PSConfEU2017/archive/master.zip')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
             "name": "[concat('S16-DC','/createad')]",
             "apiVersion": "2015-05-01-preview",
             "location": "[resourceGroup().location]",
             "dependsOn": [
-                "[concat('Microsoft.Compute/virtualMachines/','S16-DC')]"
+                "[concat('Microsoft.Compute/virtualMachines/','S16-DC')]",
+                "[concat('Microsoft.Compute/virtualMachines/','S16-DC','/extensions/copyScripts')]"
             ],
             "properties": {
                 "publisher": "Microsoft.Powershell",
@@ -247,75 +273,17 @@
                 }
             }
         },
-        {   
-            "apiVersion": "2015-01-01",
-            "type": "Microsoft.Resources/deployments",
-            "name": "updatevnetdns",
-            "dependsOn": [
-                "Microsoft.Compute/virtualMachines/S16-DC/extensions/createad"
-            ],
-            "properties": {
-                "mode": "Incremental",
-                "templateLink": {
-                    "uri": "[concat(parameters('assetLocation'),'/vnet-with-dns-server.json')]",
-                    "contentVersion": "1.0.0.0"
-                },
-                "parameters": {
-                    "virtualNetworkName": {
-                        "value": "[variables('vNetName')]"
-                    },
-                    "virtualNetworkAddressRange": {
-                        "value": "[variables('vNetPrefix')]"
-                    },
-                    "subnetName": {
-                        "value": "[variables('vNetSubnetName')]"
-                    },
-                    "subnetRange": {
-                        "value": "[variables('vNetSubnetCIDR')]"
-                    },
-                    "DNSServerAddress": {
-                        "value": [
-                            "[variables('dnsServerPrivateIp')]"
-                        ]
-                    }
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Compute/virtualMachines/extensions",
-            "name": "[concat(variables('vmNameArray')[copyIndex()],'/copyScripts')]",
-            "apiVersion": "2015-06-15",
-            "location": "[resourceGroup().location]",
-            "copy": {
-                "name": "vmCopyScriptLoop",
-                "count": 3
-            },             
-            "dependsOn": [
-                "Microsoft.Resources/deployments/updatevnetdns"
-            ],
-            "properties": {
-                "publisher": "Microsoft.Compute",
-                "type": "CustomScriptExtension",
-                "typeHandlerVersion": "1.8",
-                "autoUpgradeMinorVersion": true,
-                "settings": {
-                    "fileUris": [
-                        "[concat(parameters('assetLocation'), '/downloadScripts.ps1')]"
-                    ],
-                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', 'downloadScripts.ps1 -archiveURL https://github.com/rchaganti/PSConfEU2017/archive/master.zip')]"
-                }
-            }
-        },
         {
             "type": "Microsoft.Compute/virtualMachines/extensions",
             "name": "[concat(variables('vmNameArray')[copyIndex(1)],'/joindomain')]",
             "copy": {
                 "name": "vmDomainJoinLoop",
                 "count": "[sub(length(variables('vmNameArray')),1)]"
-            },            
+            },
             "apiVersion": "2015-05-01-preview",
             "location": "[resourceGroup().location]",
             "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/','S16-DC','/extensions/createad')]",
                 "[concat('Microsoft.Compute/virtualMachines/',variables('vmNameArray')[copyIndex(1)],'/extensions/copyScripts')]"
             ],
             "properties": {
@@ -327,6 +295,7 @@
                     "ConfigurationFunction": "Configuration.ps1\\DomainJoin",
                     "Properties": {
                         "DomainName": "[parameters('adDomainName')]",
+                        "DNSServer": "[variables('dnsServerPrivateIp')]",
                         "AdminCreds": {
                             "UserName": "[parameters('adminUsername')]",
                             "Password": "PrivateSettingsRef:AdminPassword"
