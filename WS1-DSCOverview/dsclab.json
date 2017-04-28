@@ -4,7 +4,7 @@
     "parameters": {
         "assetLocation": {
             "type": "string",
-            "defaultValue": "https://raw.githubusercontent.com/rchaganti/armseries/master",
+            "defaultValue": "https://raw.githubusercontent.com/rchaganti/PSConfEU2017/master/WS1-DSCOverview",
             "metadata": {
                 "description": "The location of resources such as templates and DSC modules that the script is dependent"
             }
@@ -280,7 +280,32 @@
                     }
                 }
             }
-        },        
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('vmNameArray')[copyIndex()],'/copyScripts')]",
+            "apiVersion": "2015-06-15",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "vmCopyScriptLoop",
+                "count": 3
+            },             
+            "dependsOn": [
+                "Microsoft.Resources/deployments/updatevnetdns"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.8",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "[concat(parameters('assetLocation'), '/downloadScripts.ps1')]"
+                    ],
+                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', 'downloadScripts.ps1 -archiveURL https://github.com/rchaganti/PSConfEU2017/archive/master.zip')]"
+                }
+            }
+        },
         {
             "type": "Microsoft.Compute/virtualMachines/extensions",
             "name": "[concat(variables('vmNameArray')[copyIndex(1)],'/joindomain')]",
@@ -291,8 +316,7 @@
             "apiVersion": "2015-05-01-preview",
             "location": "[resourceGroup().location]",
             "dependsOn": [
-                "[concat('Microsoft.Compute/virtualMachines/',variables('vmNameArray')[copyIndex(1)])]",
-                "Microsoft.Compute/virtualMachines/S16-DC/extensions/createad"
+                "[concat('Microsoft.Compute/virtualMachines/',variables('vmNameArray')[copyIndex(1)],'/extensions/copyScripts')]"
             ],
             "properties": {
                 "publisher": "Microsoft.Powershell",
