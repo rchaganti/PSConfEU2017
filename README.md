@@ -1,6 +1,18 @@
 # PSConfEU DSC Introduction Workshop
 
 ## Run on Azure
+If you have an Azure subscription or you have just signed up for a trial subscription, you can deploy a practice lab for this workshop on Azure. 
+
+All you need to do is, just click on the below Deploy to Azure button and enter a resource group name, administrator username and password. 
+
+[![Deploy to Azure](http://azuredeploy.net/deploybutton.png)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Frchaganti%2FPSConfEU2017%2Fmaster%2FWS1-DSCOverview%2Fdsclab.json)
+
+This template deploys three VMs as shown in this picture.
+![](http://i.imgur.com/oMA2neF.png)
+
+After the VMs are provisioned, all [demoscripts](https://github.com/rchaganti/PSConfEU2017/tree/master/WS1-DSCOverview/DEMOScripts) for the workshop will be available in C:\DemoScripts folder.
+
+S16-DC (domain controller for this environment), will be the jumpbox through which other VMs can be access via PowerShell remoting, RDP, and so on. 
 
 ## Run on Hyper-V
 If you have portable USB media to spare, please download the files and bring them with you to the workshop so we can help others who haven't yet preparred!
