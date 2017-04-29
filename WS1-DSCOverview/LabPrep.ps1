@@ -188,12 +188,8 @@ configuration PDC {
                     ) | ForEach-Object -Process {
                         [System.Diagnostics.Eventing.Reader.EventLogSession]::GlobalSession.ClearLog(`$_)
                     }
-                    Get-DscResource | Where-Object -FilterScript {
-                        `$_.ModuleName -ne 'PSDesiredStateConfiguration' -and `$_.ModuleName -ne `$null -and `$_.ModuleName -ne 'PackageManagement'
-                    } | Select-Object -ExpandProperty ModuleName -Unique | ForEach-Object -Process {
-                        Get-Module -Name `$_ -ListAvailable | ForEach-Object -Process {
-                            Remove-Item -Path (Split-Path `$_.ModuleBase) -Recurse -Force
-                        }
+                    Get-Module -Name 'xActiveDirectory' -ListAvailable | ForEach-Object -Process {
+                        Remove-Item -Path (Split-Path `$_.ModuleBase) -Recurse -Force
                     }
                     Restart-Computer -Force
                 }
@@ -315,12 +311,8 @@ configuration Member {
                     ) | ForEach-Object -Process {
                         [System.Diagnostics.Eventing.Reader.EventLogSession]::GlobalSession.ClearLog(`$_)
                     }
-                    Get-DscResource | Where-Object -FilterScript {
-                        `$_.ModuleName -ne 'PSDesiredStateConfiguration' -and `$_.ModuleName -ne `$null -and `$_.ModuleName -ne 'PackageManagement'
-                    } | Select-Object -ExpandProperty ModuleName -Unique | ForEach-Object -Process {
-                        Get-Module -Name `$_ -ListAvailable | ForEach-Object -Process {
-                            Remove-Item -Path (Split-Path `$_.ModuleBase) -Recurse -Force
-                        }
+                    Get-Module -Name 'xActiveDirectory','xComputerManagement','xNetworking' -ListAvailable | ForEach-Object -Process {
+                        Remove-Item -Path (Split-Path `$_.ModuleBase) -Recurse -Force
                     }
                     Restart-Computer -Force
                 }
