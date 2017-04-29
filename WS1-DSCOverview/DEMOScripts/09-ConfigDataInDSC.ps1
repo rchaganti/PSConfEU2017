@@ -54,7 +54,7 @@ $ConfigData =
             ArchivePath = "C:\Demoscripts\WebScripts.zip"
         },
         @{
-            NodeName    = "S16-02"
+            NodeName    = "S12R2-01"
             ArchivePath = "C:\Demoscripts\AppScripts.zip"
         },
         @{
