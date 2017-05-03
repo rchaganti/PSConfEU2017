@@ -21,7 +21,7 @@ To follow along on your local Hyper-V implementation you need:
 * Setup a NAT VM Switch ([Howto](https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/user-guide/setup-nat-network)) and use network **172.22.176.0/20 (255.255.240.0)**
 * If you are not capable of running a NAT VM Switch on your machine, create a private or internal VM Switch instead. Some little demo's won't apply to you.
 * Get Downloads from:
-    * [Images](https://psconfeu.blob.core.windows.net/demo/Images.zip)
+    * Images (Images are not available anymore. If you still want to test out, create 3 patches images. Server 2016 with UI, Server 2016 Core and Server 2012R2 Core)
     * [Resources](https://psconfeu.blob.core.windows.net/demo/DSCResources.zip)
     * [Demo Files](https://psconfeu.blob.core.windows.net/demo/DemoScripts.zip)
 * Extract Images to a location and put the zips for the Resources and Demo files in that location
